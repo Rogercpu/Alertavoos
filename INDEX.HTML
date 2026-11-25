@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0F172A" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AlertaVoos BR" />
+  <meta name="description" content="Monitor pessoal de passagens aéreas em Reais (R$) com alertas por faixa de preço." />
+  <title>AlertaVoos BR — Monitor de Passagens</title>
+
+  <!-- Manifest dinâmico para instalação como PWA no Android Chrome -->
+  <link id="pwa-manifest" rel="manifest" />
+
+  <!-- Tipografia Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              dark: '#0F172A',
+              sky: '#0284C7',
+              skyLight: '#E0F2FE',
+              emerald: '#10B981',
+              emeraldLight: '#D1FAE5',
+              surface: '#F1F5F9',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #E2E8F0;
+      color: #0F172A;
+      overflow-x: hidden;
+    }
+
+    /* Barra de rolagem discreta dentro do container */
+    .app-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .app-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .app-scroll::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.28);
+      border-radius: 9999px;
+    }
+
+    /* Animação suave de entrada das telas */
+    @keyframes screenFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .screen-enter {
+      animation: screenFadeIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Animação do banner estilo notificação Android */
+    @keyframes headsUpSlideDown {
+      0% {
+        opacity: 0;
+        transform: translateY(-110%) scale(0.96);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .heads-up-enter {
+      animation: headsUpSlideDown 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Pulso suave no selo de oferta encontrada */
+    @keyframes softPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.72; }
+    }
+    .badge-pulse {
+      animation: softPulse 2.2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex justify-center items-start sm:items-center sm:py-5">
+
+  <!-- Container Principal Estilo Android Mobile-First -->
+  <div id="app-shell" class="w-full max-w-[440px] min-h-screen sm:min-h-[820px] sm:h-[850px] bg-[#F1F5F9] sm:rounded-[34px] sm:shadow-[0_24px_60px_-15px_rgba(15,23,42,0.35)] sm:border-[6px] sm:border-[#0F172A] flex flex-col relative overflow-hidden">
+
+    <!-- Barra de Status Simulada (visível apenas em telas maiores para moldura Android) -->
+    <div class="hidden sm:flex items-center justify-between px-6 pt-2 pb-1 bg-[#0F172A] text-slate-300 text-[11px] font-medium select-none shrink-0">
+      <span id="status-clock">18:30</span>
+      <div class="w-20 h-4 bg-black rounded-full mx-auto"></div>
+      <div class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C7.79 3 3.7 4.41.38 7C4.41 12.06 7.89 16.37 12 21.5C16.08 16.42 19.62 12.02 23.62 7C20.32 4.41 16.21 3 12 3Z"/></svg>
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </div>
+
+    <!-- Banner Estilo Notificação Heads-Up Android -->
+    <div id="android-banner" class="hidden absolute top-3 sm:top-9 left-3 right-3 z-50 bg-[#0F172A] text-white rounded-2xl p-3.5 shadow-2xl border border-slate-700/80 cursor-pointer transition-all" onclick="handleBannerClick()">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-[#10B981]/20 border border-[#10B981]/40 flex items-center justify-center shrink-0 text-[#10B981]">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-[#10B981]">AlertaVoos BR • agora</span>
+            <button type="button" onclick="event.stopPropagation(); hideAndroidBanner();" class="text-slate-400 hover:text-white p-1 -mr-1 -mt-1 rounded-lg" aria-label="Fechar notificação">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <p id="banner-title" class="text-sm font-bold text-white truncate mt-0.5">Passagem na faixa encontrada!</p>
+          <p id="banner-body" class="text-xs text-slate-300 line-clamp-2 mt-0.5 leading-relaxed">BVB → GRU por R$ 890 na LATAM.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TELA 1: MEUS ALERTAS (INÍCIO)                                         -->
+    <!-- ===================================================================== -->
+    <section id="screen-home" class="flex-1 flex flex-col min-h-0 screen-enter">
+      <!-- Cabeçalho Material Design 3 -->
+      <header class="bg-[#0F172A] text-white px-5 pt-5 pb-5 rounded-b-[28px] shadow-md shrink-0">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-2xl bg-[#0284C7] flex items-center justify-center shadow-inner">
+              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="text-xl font-extrabold tracking-tight">Meus Alertas</h1>
+                <span id="active-count-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-[#0284C7]/25 text-sky-300 border border-sky-500/30">
+                  2 ativos
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">AlertaVoos BR • Monitor em R$</p>
+            </div>
+          </div>
+
+          <!-- Botão de Permissão / Teste de Notificação -->
+          <button
+            id="btn-notif-header"
+            type="button"
+            onclick="handleHeaderNotificationAction()"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-semibold border border-slate-700 shrink-0"
+          >
+            <svg id="icon-notif-bell" class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+            </svg>
+            <span id="label-notif-header">Ativar Alertas</span>
+          </button>
+        </div>
+
+        <!-- Barra de Status da Permissão de Notificações -->
+        <div class="mt-3.5 pt-3 border-t border-slate-800/90 flex items-center justify-between text-[11px]">
+          <div class="flex items-center gap-1.5 text-slate-300">
+            <span id="notif-status-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span id="notif-status-text">Notificações do celular: Pendente</span>
+          </div>
+          <button type="button" onclick="triggerTestNotification()" class="text-sky-400 hover:text-sky-300 font-semibold underline underline-offset-2">
+            Testar aviso
+          </button>
+        </div>
+      </header>
+
+      <!-- Conteúdo Rolável da Lista de Alertas -->
+      <main class="flex-1 overflow-y-auto app-scroll px-4 pt-4 pb-28 space-y-3.5">
+        <!-- Dica de Instalação no Android Chrome -->
+        <div id="install-tip-card" class="bg-sky-50 border border-sky-200/80 rounded-2xl p-3 flex items-start justify-between gap-2.5">
+          <div class="flex items-start gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-[#0284C7]/15 text-[#0284C7] flex items-center justify-center shrink-0 mt-0.5">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              <strong class="text-slate-900">Instalar no Android:</strong> no Chrome, toque nos <strong>3 pontinhos (⋮)</strong> e escolha <strong>"Adicionar à tela inicial"</strong>.
+            </p>
+          </div>
+          <button type="button" onclick="dismissInstallTip()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Dispensar dica">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Container dos Cartões de Alertas -->
+        <div id="alerts-list" class="space-y-3.5"></div>
+
+        <!-- Estado Vazio (quando não há alertas) -->
+        <div id="empty-state" class="hidden bg-white rounded-3xl p-7 text-center border border-slate-200/80 shadow-sm mt-4">
+          <div class="w-16 h-16 rounded-2xl bg-sky-50 text-[#0284C7] flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+            </svg>
+          </div>
+          <h2 class="text-base font-bold text-slate-900">Nenhum alerta cadastrado</h2>
+          <p class="text-xs text-slate-500 mt-1.5 leading-relaxed max-w-[260px] mx-auto">
+            Defina seu trecho, a data e o valor desejado em Reais para receber aviso quando a passagem baixar.
+          </p>
+          <button
+            type="button"
+            onclick="navigateTo('create')"
+            class="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#0284C7] hover:bg-sky-700 text-white text-sm font-bold shadow-md active:scale-95 transition"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Criar Primeiro Alerta
+          </button>
+        </div>
+      </main>
+
+      <!-- Botão Flutuante (FAB) + Novo Alerta -->
+      <button
+        type="button"
+        onclick="navigateTo('create')"
+        class="absolute bottom-5 right-5 z-20 flex items-center gap-2.5 pl-4 pr-5 py-3.5 rounded-2xl bg-[#0284C7] hover:bg-sky-700 text-white font-bold text-sm shadow-[0_10px_25px_-5px_rgba(2,132,199,0.55)] active:scale-95 transition"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Novo Alerta</span>
+      </button>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TELA 2: CRIAR NOVO ALERTA                                             -->
+    <!-- ===================================================================== -->
+    <section id="screen-create" class="hidden flex-1 flex flex-col min-h-0 screen-enter">
+      <!-- Cabeçalho com Voltar -->
+      <header class="bg-[#0F172A] text-white px-4 py-4 flex items-center gap-3 shrink-0 shadow-md">
+        <button
+          type="button"
+          onclick="navigateTo('home')"
+          class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
+          aria-label="Voltar para Meus Alertas"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div>
+          <h1 class="text-lg font-extrabold tracking-tight">Criar Novo Alerta</h1>
+          <p class="text-xs text-slate-400">Defina trecho, data e faixa em R$</p>
+        </div>
+      </header>
+
+      <!-- Formulário Rolável -->
+      <form id="create-alert-form" onsubmit="handleCreateAlertSubmit(event)" class="flex-1 overflow-y-auto app-scroll px-4 pt-4 pb-8 space-y-4">
+
+        <!-- Bloco Origem e Destino -->
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/80 space-y-3 relative">
+          <div>
+            <label for="input-origin" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Origem</label>
+            <div class="relative">
+              <input
+                id="input-origin"
+                type="text"
+                required
+                placeholder="Ex.: BVB - Boa Vista"
+                class="w-full rounded-2xl border border-slate-300 bg-slate-50 focus:bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent transition"
+              />
+            </div>
+            <!-- Sugestões Rápidas Origem -->
+            <div id="origin-chips" class="flex flex-wrap gap-1.5 mt-2"></div>
+          </div>
+
+          <!-- Botão Inverter Origem / Destino -->
+          <div class="flex items-center justify-center -my-1">
+            <button
+              type="button"
+              onclick="swapOriginDestination()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-50 hover:bg-sky-100 text-[#0284C7] border border-sky-200 text-xs font-bold active:scale-95 transition"
+              title="Inverter origem e destino"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+              Inverter trecho
+            </button>
+          </div>
+
+          <div>
+            <label for="input-dest" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Destino</label>
+            <input
+              id="input-dest"
+              type="text"
+              required
+              placeholder="Ex.: GRU - São Paulo"
+              class="w-full rounded-2xl border border-slate-300 bg-slate-50 focus:bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent transition"
+            />
+            <!-- Sugestões Rápidas Destino -->
+            <div id="dest-chips" class="flex flex-wrap gap-1.5 mt-2"></div>
+          </div>
+        </div>
+
+        <!-- Bloco Data da Viagem e Tipo -->
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/80 space-y-3.5">
+          <div>
+            <label for="input-date" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Data da Viagem</label>
+            <input
+              id="input-date"
+              type="date"
+              required
+              class="w-full rounded-2xl border border-slate-300 bg-slate-50 focus:bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] transition"
+            />
+          </div>
+
+          <div>
+            <span class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Tipo de Passagem</span>
+            <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl">
+              <button
+                type="button"
+                id="btn-trip-oneway"
+                onclick="setTripType('oneway')"
+                class="py-2.5 px-3 rounded-xl text-xs font-bold bg-white text-[#0F172A] shadow-sm transition"
+              >
+                Somente ida
+              </button>
+              <button
+                type="button"
+                id="btn-trip-roundtrip"
+                onclick="setTripType('roundtrip')"
+                class="py-2.5 px-3 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition"
+              >
+                Ida e volta
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco Faixa de Preço em Reais (R$ X a R$ Y) -->
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Faixa de Preço Desejada (R$)</span>
+            <span class="text-[11px] font-semibold text-[#0284C7]">Entre X e Y</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="input-min-price" class="block text-[11px] font-semibold text-slate-600 mb-1">Valor Mínimo (R$ X)</label>
+              <div class="relative">
+                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                <input
+                  id="input-min-price"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  step="1"
+                  required
+                  value="500"
+                  oninput="updatePricePreview()"
+                  class="w-full rounded-2xl border border-slate-300 bg-slate-50 focus:bg-white pl-9 pr-3 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label for="input-max-price" class="block text-[11px] font-semibold text-slate-600 mb-1">Valor Máximo (R$ Y)</label>
+              <div class="relative">
+                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                <input
+                  id="input-max-price"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  step="1"
+                  required
+                  value="950"
+                  oninput="updatePricePreview()"
+                  class="w-full rounded-2xl border border-slate-300 bg-slate-50 focus:bg-white pl-9 pr-3 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] transition"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Mensagem de Validação / Resumo da Faixa -->
+          <div id="price-validation-box" class="rounded-2xl bg-sky-50 border border-sky-200/80 px-3.5 py-2.5 text-xs text-slate-700">
+            Notificar quando a passagem estiver entre <strong class="text-[#0284C7]">R$ 500</strong> e <strong class="text-[#0284C7]">R$ 950</strong>.
+          </div>
+        </div>
+
+        <!-- Frequência de Monitoramento -->
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/80">
+          <span class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Frequência de Verificação</span>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" data-freq="1" onclick="setFrequency(1)" class="freq-btn py-2.5 px-2 rounded-2xl border text-xs font-bold transition">
+              A cada 1 hora
+            </button>
+            <button type="button" data-freq="3" onclick="setFrequency(3)" class="freq-btn py-2.5 px-2 rounded-2xl border text-xs font-bold transition">
+              A cada 3 horas
+            </button>
+            <button type="button" data-freq="6" onclick="setFrequency(6)" class="freq-btn py-2.5 px-2 rounded-2xl border text-xs font-bold transition">
+              A cada 6 horas
+            </button>
+          </div>
+        </div>
+
+        <!-- Botão Principal Ativar Alerta -->
+        <button
+          id="btn-submit-alert"
+          type="submit"
+          class="w-full py-4 px-5 rounded-2xl bg-[#0284C7] hover:bg-sky-700 text-white font-extrabold text-sm shadow-lg shadow-sky-600/25 active:scale-[0.99] transition flex items-center justify-center gap-2"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+          </svg>
+          <span>Ativar Alerta</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TELA 3: DETALHES DA OFERTA                                            -->
+    <!-- ===================================================================== -->
+    <section id="screen-details" class="hidden flex-1 flex flex-col min-h-0 screen-enter">
+      <!-- Cabeçalho -->
+      <header class="bg-[#0F172A] text-white px-4 py-4 flex items-center justify-between gap-2 shrink-0 shadow-md">
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            onclick="navigateTo('home')"
+            class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
+            aria-label="Voltar para Meus Alertas"
+          >
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div>
+            <h1 class="text-lg font-extrabold tracking-tight">Detalhes da Oferta</h1>
+            <p id="detail-subtitle" class="text-xs text-slate-400">Monitoramento ativo</p>
+          </div>
+        </div>
+
+        <button
+          id="detail-toggle-btn"
+          type="button"
+          onclick="toggleCurrentAlertActive()"
+          class="px-3 py-1.5 rounded-xl text-xs font-bold border transition"
+        >
+          Ativo
+        </button>
+      </header>
+
+      <!-- Conteúdo Rolável dos Detalhes -->
+      <div class="flex-1 overflow-y-auto app-scroll px-4 pt-4 pb-10 space-y-4">
+
+        <!-- Cartão Resumo do Trecho e Faixa Alvo -->
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/80">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <span id="detail-status-badge" class="px-3 py-1 rounded-full text-xs font-extrabold">
+              Oferta Encontrada!
+            </span>
+            <span id="detail-frequency-pill" class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+              A cada 3h
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 py-1">
+            <div>
+              <span id="detail-origin-code" class="text-2xl font-black text-slate-900 tracking-tight">BVB</span>
+              <p id="detail-origin-city" class="text-xs font-medium text-slate-500">Boa Vista</p>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center px-2">
+              <div class="w-full flex items-center gap-1.5 text-[#0284C7]">
+                <span class="h-[2px] flex-1 bg-sky-200 rounded"></span>
+                <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+                </svg>
+                <span class="h-[2px] flex-1 bg-sky-200 rounded"></span>
+              </div>
+              <span id="detail-trip-type" class="text-[11px] font-semibold text-slate-500 mt-1">Somente ida</span>
+            </div>
+
+            <div class="text-right">
+              <span id="detail-dest-code" class="text-2xl font-black text-slate-900 tracking-tight">GRU</span>
+              <p id="detail-dest-city" class="text-xs font-medium text-slate-500">São Paulo</p>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div class="flex items-center gap-1.5 text-slate-700 font-semibold">
+              <svg class="w-4 h-4 text-[#0284C7]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span id="detail-date-formatted">18 de dez. de 2026</span>
+            </div>
+            <div class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 font-bold">
+              Faixa: <span id="detail-target-range" class="text-[#0284C7]">R$ 650 a R$ 980</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cartão de Destaque: Melhor Cotação Encontrada -->
+        <div id="detail-quote-card" class="bg-white rounded-3xl p-4 shadow-sm border-2 border-[#10B981] space-y-3.5 transition-colors">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-500">Melhor Cotação Encontrada</span>
+            <span id="detail-airline-badge" class="px-3 py-1 rounded-xl text-xs font-extrabold bg-slate-900 text-white">
+              LATAM
+            </span>
+          </div>
+
+          <!-- Preço Principal e Horário -->
+          <div class="flex items-end justify-between gap-2">
+            <div>
+              <p class="text-[11px] text-slate-500 font-medium">Tarifa por passageiro</p>
+              <p id="detail-quote-price" class="text-3xl font-black text-slate-900 tracking-tight mt-0.5">R$ 890</p>
+            </div>
+            <div class="text-right">
+              <p id="detail-flight-time" class="text-sm font-bold text-slate-800">02:15 → 07:45</p>
+              <p id="detail-flight-duration" class="text-xs text-slate-500">4h 30m • Direto</p>
+            </div>
+          </div>
+
+          <!-- Comparação Visual com a Faixa R$ X - R$ Y -->
+          <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200/70 space-y-2">
+            <div class="flex items-center justify-between text-[11px] font-bold">
+              <span id="gauge-min-label" class="text-slate-500">Mín: R$ 650</span>
+              <span id="gauge-status-label" class="text-[#10B981]">Dentro da sua faixa!</span>
+              <span id="gauge-max-label" class="text-slate-500">Máx: R$ 980</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden relative">
+              <!-- Zona Alvo Destacada -->
+              <div class="absolute inset-y-0 left-[20%] right-[20%] bg-emerald-200/90"></div>
+              <!-- Marcador do Preço Atual -->
+              <div id="gauge-marker" class="h-full bg-[#10B981] rounded-full transition-all duration-300" style="width: 55%;"></div>
+            </div>
+            <p id="detail-last-checked" class="text-[11px] text-slate-400 text-right">Atualizado agora mesmo</p>
+          </div>
+        </div>
+
+        <!-- Botões Interativos de Simulação (Testar Alerta na Hora) -->
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/80 space-y-2.5">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#0284C7]"></span>
+            <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Testar Funcionamento Agora</h2>
+          </div>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            Simule uma variação de preço para ver a notificação disparando no celular na hora:
+          </p>
+
+          <div class="grid grid-cols-1 gap-2.5 pt-1">
+            <button
+              type="button"
+              onclick="simulateInRangePrice()"
+              class="w-full py-3.5 px-4 rounded-2xl bg-[#10B981] hover:bg-emerald-600 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.99] transition flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+              </svg>
+              <span>Simular Preço na Faixa (Disparar Alerta)</span>
+            </button>
+
+            <button
+              type="button"
+              onclick="simulateMarketQuote()"
+              class="w-full py-3 px-4 rounded-2xl bg-sky-50 hover:bg-sky-100 text-[#0284C7] border border-sky-200 font-bold text-xs sm:text-sm active:scale-[0.99] transition flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>
+              </svg>
+              <span>Simular Cotação de Mercado</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Botão Abrir no Google Voos -->
+        <a
+          id="btn-google-flights"
+          href="https://www.google.com/travel/flights"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="w-full py-3.5 px-5 rounded-2xl bg-[#0F172A] hover:bg-slate-800 text-white font-extrabold text-sm shadow-md active:scale-[0.99] transition flex items-center justify-center gap-2"
+        >
+          <span>Ver Passagem no Google Voos</span>
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+
+        <!-- Seção Recolhível: Como conectar API real (Amadeus / SerpApi) -->
+        <details class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden group">
+          <summary class="px-4 py-3.5 cursor-pointer list-none flex items-center justify-between text-xs font-extrabold text-slate-800 select-none">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-sky-100 text-[#0284C7] flex items-center justify-center font-black text-xs">&lt;/&gt;</span>
+              <span>Como conectar API real (Amadeus / SerpApi)</span>
+            </div>
+            <svg class="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="px-4 pb-4 pt-1 text-xs text-slate-600 space-y-2.5 border-t border-slate-100 leading-relaxed">
+            <p>
+              Para consultar tarifas reais automaticamente sem gastar a bateria do celular, conecte este aplicativo a uma API de voos:
+            </p>
+            <ol class="list-decimal pl-4 space-y-1.5">
+              <li><strong>Amadeus for Developers (Grátis para testes):</strong> crie uma conta em <em>developers.amadeus.com</em>, gere sua <code>API Key</code> e <code>API Secret</code> e use o endpoint <em>Flight Offers Search</em>.</li>
+              <li><strong>SerpApi (Google Flights API):</strong> alternativa simples em <em>serpapi.com</em> que retorna os preços diretos do Google Voos em JSON.</li>
+              <li><strong>Automação em segundo plano:</strong> use <strong>n8n</strong> ou <strong>Make</strong> para rodar a consulta a cada 1h/3h e enviar push via Firebase quando <code>preco &gt;= X &amp;&amp; preco &lt;= Y</code>.</li>
+            </ol>
+            <div class="bg-slate-900 text-slate-200 rounded-2xl p-3 font-mono text-[11px] overflow-x-auto relative">
+              <div class="flex items-center justify-between mb-1.5 text-slate-400">
+                <span>Ponto de integração no código:</span>
+                <button type="button" onclick="copyApiSnippet()" class="text-sky-400 hover:text-sky-300 font-sans font-bold text-[11px]">Copiar</button>
+              </div>
+              <pre id="api-snippet-code" class="whitespace-pre-wrap">const FLIGHT_API_CONFIG = {
+  provider: "amadeus", // ou "serpapi"
+  apiKey: "SUA_CHAVE_AQUI",
+  currency: "BRL"
+};</pre>
+            </div>
+          </div>
+        </details>
+
+        <!-- Botão Excluir Alerta -->
+        <button
+          type="button"
+          onclick="openDeleteModal()"
+          class="w-full py-3 px-4 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 font-bold text-xs active:scale-[0.99] transition flex items-center justify-center gap-1.5"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+          </svg>
+          <span>Excluir Alerta</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Snackbar Inferior Estilo Android -->
+    <div id="android-snackbar" class="hidden absolute bottom-20 left-4 right-4 z-40 bg-[#0F172A] text-white text-xs font-medium px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center justify-between gap-2">
+      <span id="snackbar-text">Alerta salvo com sucesso!</span>
+    </div>
+
+    <!-- Modal Customizado de Confirmação de Exclusão (sem window.confirm) -->
+    <div id="delete-modal" class="hidden absolute inset-0 z-50 bg-slate-950/60 backdrop-blur-[2px] flex items-center justify-center p-5">
+      <div class="bg-white rounded-3xl p-5 w-full max-w-[340px] shadow-2xl border border-slate-200 space-y-4 screen-enter">
+        <div class="w-11 h-11 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        </div>
+        <div>
+          <h3 class="text-base font-extrabold text-slate-900">Excluir este alerta?</h3>
+          <p id="delete-modal-desc" class="text-xs text-slate-500 mt-1 leading-relaxed">
+            Você deixará de monitorar este trecho e faixa de preço.
+          </p>
+        </div>
+        <div class="grid grid-cols-2 gap-2.5 pt-1">
+          <button
+            type="button"
+            onclick="closeDeleteModal()"
+            class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onclick="confirmDeleteAlert()"
+            class="py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition"
+          >
+            Sim, excluir
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // CONFIGURAÇÃO DO MANIFEST PWA DINÂMICO (PARA ADICIONAR À TELA INICIAL)
+    // =========================================================================
+    (function registerDynamicManifest() {
+      try {
+        const manifest = {
+          name: "AlertaVoos BR — Monitor de Passagens",
+          short_name: "AlertaVoos BR",
+          description: "Monitor de passagens aéreas em Reais (R$) com alertas por faixa de preço.",
+          start_url: ".",
+          display: "standalone",
+          background_color: "#F1F5F9",
+          theme_color: "#0F172A",
+          orientation: "portrait"
+        };
+        const encoded = encodeURIComponent(JSON.stringify(manifest));
+        const link = document.getElementById("pwa-manifest");
+        if (link) {
+          link.setAttribute("href", "data:application/manifest+json;charset=utf-8," + encoded);
+        }
+      } catch (e) {
+        console.warn("Manifest dinâmico não pôde ser aplicado:", e);
+      }
+    })();
+
+    // =========================================================================
+    // DADOS DE REFERÊNCIA: AEROPORTOS BRASILEIROS E COMPANHIAS
+    // =========================================================================
+    const BRAZILIAN_AIRPORTS = [
+      { code: "BVB", city: "Boa Vista", label: "BVB - Boa Vista" },
+      { code: "GRU", city: "São Paulo", label: "GRU - São Paulo" },
+      { code: "BSB", city: "Brasília", label: "BSB - Brasília" },
+      { code: "MAO", city: "Manaus", label: "MAO - Manaus" },
+      { code: "GIG", city: "Rio de Janeiro", label: "GIG - Rio de Janeiro" },
+      { code: "CNF", city: "Belo Horizonte", label: "CNF - Belo Horizonte" },
+      { code: "REC", city: "Recife", label: "REC - Recife" }
+    ];
+
+    const AIRLINES = [
+      { name: "LATAM", color: "bg-indigo-950 text-white" },
+      { name: "GOL", color: "bg-orange-500 text-white" },
+      { name: "Azul", color: "bg-sky-600 text-white" }
+    ];
+
+    const FLIGHT_SCHEDULES = [
+      { dep: "02:15", arr: "07:45", dur: "4h 30m", stops: "Direto" },
+      { dep: "06:40", arr: "09:25", dur: "2h 45m", stops: "Direto" },
+      { dep: "11:10", arr: "16:50", dur: "5h 40m", stops: "1 parada" },
+      { dep: "14:35", arr: "18:10", dur: "3h 35m", stops: "Direto" },
+      { dep: "19:50", arr: "23:15", dur: "3h 25m", stops: "Direto" },
+      { dep: "22:30", arr: "04:10", dur: "5h 40m", stops: "1 parada" }
+    ];
+
+    const STORAGE_KEY = "alertavoos_br_alerts_v1";
+    const TIP_DISMISSED_KEY = "alertavoos_br_tip_dismissed";
+
+    // Estado Global do Aplicativo
+    let alerts = [];
+    let currentScreen = "home";
+    let selectedAlertId = null;
+    let formTripType = "oneway";
+    let formFrequency = 3;
+    let bannerTimeout = null;
+    let snackbarTimeout = null;
+    let lastBannerAlertId = null;
+
+    // =========================================================================
+    // UTILITÁRIOS DE DATA, MOEDA E SOM
+    // =========================================================================
+    function getFutureDateISO(daysAhead) {
+      const d = new Date();
+      d.setDate(d.getDate() + daysAhead);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDateBR(isoDate) {
+      if (!isoDate) return "";
+      const [y, m, d] = isoDate.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, d);
+      return dateObj.toLocaleDateString("pt-BR", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      });
+    }
+
+    function formatBRL(value) {
+      return Number(value).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0
+      });
+    }
+
+    function formatRelativeTime(isoTimestamp) {
+      if (!isoTimestamp) return "Agora mesmo";
+      const diffSec = Math.floor((Date.now() - new Date(isoTimestamp).getTime()) / 1000);
+      if (diffSec < 60) return "Agora mesmo";
+      if (diffSec < 3600) return `Há ${Math.floor(diffSec / 60)} min`;
+      if (diffSec < 86400) return `Há ${Math.floor(diffSec / 3600)}h`;
+      return new Date(isoTimestamp).toLocaleDateString("pt-BR");
+    }
+
+    // Sintetiza um toque suave de notificação Android via Web Audio API
+    function playNotificationChime() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        const notes = [587.33, 880]; // Ré5 -> Lá5 (acorde limpo de alerta)
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.11);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.11);
+          gain.gain.exponentialRampToValueAtTime(0.14, now + idx * 0.11 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.11 + 0.35);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.11);
+          osc.stop(now + idx * 0.11 + 0.38);
+        });
+      } catch (err) {
+        // Ignora caso o navegador bloqueie áudio automático
+      }
+    }
+
+    function triggerDeviceVibration() {
+      try {
+        if ("vibrate" in navigator) {
+          navigator.vibrate([120, 60, 140]);
+        }
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // PERSISTÊNCIA LOCAL (localStorage)
+    // =========================================================================
+    function createInitialSampleAlerts() {
+      return [
+        {
+          id: "sample_bvb_gru",
+          originCode: "BVB",
+          originCity: "Boa Vista",
+          destCode: "GRU",
+          destCity: "São Paulo",
+          travelDate: getFutureDateISO(21),
+          tripType: "oneway",
+          minPrice: 650,
+          maxPrice: 980,
+          frequencyHours: 3,
+          active: true,
+          lastChecked: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+          quote: {
+            price: 890,
+            airline: "LATAM",
+            departureTime: "02:15",
+            arrivalTime: "07:45",
+            duration: "4h 30m",
+            stops: "Direto"
+          }
+        },
+        {
+          id: "sample_bsb_gig",
+          originCode: "BSB",
+          originCity: "Brasília",
+          destCode: "GIG",
+          destCity: "Rio de Janeiro",
+          travelDate: getFutureDateISO(34),
+          tripType: "roundtrip",
+          minPrice: 320,
+          maxPrice: 490,
+          frequencyHours: 1,
+          active: true,
+          lastChecked: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
+          quote: {
+            price: 560,
+            airline: "GOL",
+            departureTime: "06:40",
+            arrivalTime: "09:25",
+            duration: "1h 45m",
+            stops: "Direto"
+          }
+        }
+      ];
+    }
+
+    function loadAlerts() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw === null) {
+          alerts = createInitialSampleAlerts();
+          saveAlerts();
+        } else {
+          alerts = JSON.parse(raw);
+          if (!Array.isArray(alerts)) alerts = [];
+        }
+      } catch (e) {
+        console.error("Erro ao carregar alertas:", e);
+        alerts = createInitialSampleAlerts();
+      }
+    }
+
+    function saveAlerts() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
+      } catch (e) {
+        console.error("Erro ao salvar no localStorage:", e);
+      }
+    }
+
+    // =========================================================================
+    // GERENCIAMENTO DE NOTIFICAÇÕES (WEB NOTIFICATIONS API + BANNER ANDROID)
+    // =========================================================================
+    function updateNotificationPermissionUI() {
+      const dot = document.getElementById("notif-status-dot");
+      const statusText = document.getElementById("notif-status-text");
+      const headerLabel = document.getElementById("label-notif-header");
+      const bellIcon = document.getElementById("icon-notif-bell");
+
+      if (!("Notification" in window)) {
+        dot.className = "w-2 h-2 rounded-full bg-slate-400";
+        statusText.textContent = "Notificações nativas indisponíveis neste navegador";
+        headerLabel.textContent = "Testar Aviso";
+        return;
+      }
+
+      const perm = Notification.permission;
+      if (perm === "granted") {
+        dot.className = "w-2 h-2 rounded-full bg-[#10B981]";
+        statusText.textContent = "Notificações do celular: Ativadas";
+        headerLabel.textContent = "Testar Notificação";
+        bellIcon.className = "w-4 h-4 text-[#10B981]";
+      } else if (perm === "denied") {
+        dot.className = "w-2 h-2 rounded-full bg-red-400";
+        statusText.textContent = "Notificações bloqueadas nas permissões do site";
+        headerLabel.textContent = "Bloqueadas";
+        bellIcon.className = "w-4 h-4 text-red-400";
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-amber-400";
+        statusText.textContent = "Notificações do celular: Pendente";
+        headerLabel.textContent = "Ativar Notificações";
+        bellIcon.className = "w-4 h-4 text-sky-400";
+      }
+    }
+
+    async function handleHeaderNotificationAction() {
+      if (!("Notification" in window)) {
+        triggerTestNotification();
+        return;
+      }
+
+      if (Notification.permission === "default") {
+        try {
+          const result = await Notification.requestPermission();
+          updateNotificationPermissionUI();
+          if (result === "granted") {
+            triggerTestNotification();
+          } else {
+            showSnackbar("Permissão negada. Você ainda verá os alertas dentro do app.");
+          }
+        } catch (err) {
+          showSnackbar("Não foi possível solicitar permissão agora.");
+        }
+      } else if (Notification.permission === "granted") {
+        triggerTestNotification();
+      } else {
+        showSnackbar("Ative as notificações nas configurações do cadeado do navegador.");
+        triggerTestNotification();
+      }
+    }
+
+    function triggerTestNotification() {
+      const sample = alerts[0];
+      const title = "AlertaVoos BR • Teste de Notificação";
+      const body = sample
+        ? `${sample.originCode} → ${sample.destCode} monitorado entre ${formatBRL(sample.minPrice)} e ${formatBRL(sample.maxPrice)}.`
+        : "Notificações funcionando perfeitamente no seu aparelho!";
+
+      dispatchFlightAlertNotification(title, body, sample ? sample.id : null);
+    }
+
+    function dispatchFlightAlertNotification(title, body, alertId = null) {
+      lastBannerAlertId = alertId;
+      playNotificationChime();
+      triggerDeviceVibration();
+
+      // 1. Banner visual estilo Android Heads-Up no topo do app
+      const banner = document.getElementById("android-banner");
+      document.getElementById("banner-title").textContent = title;
+      document.getElementById("banner-body").textContent = body;
+
+      banner.classList.remove("hidden", "heads-up-enter");
+      void banner.offsetWidth; // força reflow para reiniciar animação
+      banner.classList.add("heads-up-enter");
+
+      clearTimeout(bannerTimeout);
+      bannerTimeout = setTimeout(() => {
+        hideAndroidBanner();
+      }, 6000);
+
+      // 2. Notificação real do navegador / Android OS (se permitida)
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          const sysNotif = new Notification(title, {
+            body: body,
+            tag: alertId || "alertavoos-br-notif",
+            vibrate: [120, 60, 140]
+          });
+          sysNotif.onclick = function () {
+            window.focus();
+            if (alertId) openAlertDetails(alertId);
+            sysNotif.close();
+          };
+        } catch (err) {
+          // Alguns WebViews móveis exigem ServiceWorker para new Notification(), o banner visual garante o feedback imediato
+        }
+      }
+    }
+
+    function hideAndroidBanner() {
+      const banner = document.getElementById("android-banner");
+      banner.classList.add("hidden");
+    }
+
+    function handleBannerClick() {
+      hideAndroidBanner();
+      if (lastBannerAlertId) {
+        openAlertDetails(lastBannerAlertId);
+      }
+    }
+
+    function showSnackbar(message) {
+      const sb = document.getElementById("android-snackbar");
+      document.getElementById("snackbar-text").textContent = message;
+      sb.classList.remove("hidden");
+      clearTimeout(snackbarTimeout);
+      snackbarTimeout = setTimeout(() => {
+        sb.classList.add("hidden");
+      }, 3400);
+    }
+
+    // =========================================================================
+    // NAVEGAÇÃO ENTRE AS 3 TELAS
+    // =========================================================================
+    function navigateTo(screenName) {
+      currentScreen = screenName;
+      const screens = ["home", "create", "details"];
+      screens.forEach((s) => {
+        const el = document.getElementById(`screen-${s}`);
+        if (s === screenName) {
+          el.classList.remove("hidden", "screen-enter");
+          void el.offsetWidth;
+          el.classList.add("screen-enter");
+        } else {
+          el.classList.add("hidden");
+        }
+      });
+
+      if (screenName === "home") {
+        renderAlertsList();
+      } else if (screenName === "create") {
+        prepareCreateForm();
+      } else if (screenName === "details") {
+        renderAlertDetails();
+      }
+    }
+
+    function openAlertDetails(alertId) {
+      selectedAlertId = alertId;
+      navigateTo("details");
+    }
+
+    // =========================================================================
+    // LÓGICA DE STATUS E COTAÇÕES
+    // =========================================================================
+    function getAlertStatus(alert) {
+      if (!alert.active) {
+        return {
+          key: "paused",
+          label: "Pausado",
+          badgeClass: "bg-slate-200 text-slate-700",
+          borderClass: "border-slate-200/90"
+        };
+      }
+      const price = alert.quote ? alert.quote.price : null;
+      if (price !== null && price >= alert.minPrice && price <= alert.maxPrice) {
+        return {
+          key: "found",
+          label: "Oferta Encontrada!",
+          badgeClass: "bg-[#10B981] text-white badge-pulse shadow-sm shadow-emerald-500/30",
+          borderClass: "border-[#10B981]/70"
+        };
+      }
+      return {
+        key: "monitoring",
+        label: "Monitorando",
+        badgeClass: "bg-sky-100 text-[#0284C7]",
+        borderClass: "border-slate-200/90"
+      };
+    }
+
+    function generateRandomQuote(minTarget, maxTarget, forceInRange = false) {
+      let price;
+      if (forceInRange) {
+        price = Math.floor(Math.random() * (maxTarget - minTarget + 1)) + minTarget;
+      } else {
+        // Gera cotação realista entre 90% do mínimo e 145% do máximo
+        const low = Math.max(120, Math.floor(minTarget * 0.9));
+        const high = Math.max(maxTarget + 150, Math.floor(maxTarget * 1.45));
+        price = Math.floor(Math.random() * (high - low + 1)) + low;
+      }
+      // Arredonda para múltiplo de 5 para parecer tarifa real
+      price = Math.round(price / 5) * 5;
+      if (forceInRange) {
+        price = Math.min(maxTarget, Math.max(minTarget, price));
+      }
+
+      const airline = AIRLINES[Math.floor(Math.random() * AIRLINES.length)].name;
+      const sched = FLIGHT_SCHEDULES[Math.floor(Math.random() * FLIGHT_SCHEDULES.length)];
+      return {
+        price,
+        airline,
+        departureTime: sched.dep,
+        arrivalTime: sched.arr,
+        duration: sched.dur,
+        stops: sched.stops
+      };
+    }
+
+    // =========================================================================
+    // TELA 1: RENDERIZAÇÃO E INTERAÇÕES DA LISTA DE ALERTAS
+    // =========================================================================
+    function renderAlertsList() {
+      const listContainer = document.getElementById("alerts-list");
+      const emptyState = document.getElementById("empty-state");
+      const activeBadge = document.getElementById("active-count-badge");
+
+      const activeCount = alerts.filter((a) => a.active).length;
+      activeBadge.textContent = activeCount === 1 ? "1 ativo" : `${activeCount} ativos`;
+
+      if (alerts.length === 0) {
+        listContainer.innerHTML = "";
+        emptyState.classList.remove("hidden");
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+      listContainer.innerHTML = alerts
+        .map((alert) => {
+          const status = getAlertStatus(alert);
+          const quotePrice = alert.quote ? formatBRL(alert.quote.price) : "—";
+          const quoteAirline = alert.quote ? alert.quote.airline : "";
+          const isMatch = status.key === "found";
+
+          return `
+            <article
+              onclick="openAlertDetails('${alert.id}')"
+              class="bg-white rounded-3xl p-4 shadow-sm border-2 ${status.borderClass} hover:shadow-md active:scale-[0.99] transition cursor-pointer select-none"
+            >
+              <!-- Linha Superior: Trecho e Selo de Status -->
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg font-black text-slate-900 tracking-tight">${alert.originCode}</span>
+                    <svg class="w-4 h-4 text-[#0284C7]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <span class="text-lg font-black text-slate-900 tracking-tight">${alert.destCode}</span>
+                  </div>
+                  <p class="text-xs text-slate-500 font-medium">${alert.originCity} → ${alert.destCity}</p>
+                </div>
+
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-extrabold shrink-0 ${status.badgeClass}">
+                  ${status.label}
+                </span>
+              </div>
+
+              <!-- Data e Faixa Alvo -->
+              <div class="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 text-xs">
+                <span class="text-slate-600 font-semibold">
+                  ${formatDateBR(alert.travelDate)} • ${alert.tripType === "roundtrip" ? "Ida e volta" : "Somente ida"}
+                </span>
+                <span class="text-slate-700 font-bold">
+                  Entre <span class="text-[#0284C7]">${formatBRL(alert.minPrice)}</span> e <span class="text-[#0284C7]">${formatBRL(alert.maxPrice)}</span>
+                </span>
+              </div>
+
+              <!-- Box de Última Cotação -->
+              <div class="mt-2.5 rounded-2xl px-3.5 py-2.5 flex items-center justify-between ${isMatch ? "bg-emerald-50 border border-emerald-200/80" : "bg-slate-50 border border-slate-200/70"}">
+                <div>
+                  <span class="block text-[10px] uppercase tracking-wider font-bold ${isMatch ? "text-emerald-700" : "text-slate-400"}">
+                    Último preço verificado
+                  </span>
+                  <div class="flex items-baseline gap-1.5 mt-0.5">
+                    <span class="text-base font-black ${isMatch ? "text-[#10B981]" : "text-slate-900"}">${quotePrice}</span>
+                    <span class="text-xs font-semibold text-slate-500">${quoteAirline ? `• ${quoteAirline}` : ""}</span>
+                  </div>
+                </div>
+                <span class="text-[11px] font-medium text-slate-400">${formatRelativeTime(alert.lastChecked)}</span>
+              </div>
+
+              <!-- Controles Rápidos (Toggle + Verificar Agora) -->
+              <div class="mt-3 flex items-center justify-between gap-2" onclick="event.stopPropagation()">
+                <label class="inline-flex items-center gap-2 cursor-pointer py-1">
+                  <input
+                    type="checkbox"
+                    ${alert.active ? "checked" : ""}
+                    onchange="toggleAlertActive('${alert.id}')"
+                    class="sr-only peer"
+                  />
+                  <div class="w-10 h-6 bg-slate-300 peer-checked:bg-[#0284C7] rounded-full relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:bg-white after:rounded-full after:shadow after:transition-transform peer-checked:after:translate-x-4"></div>
+                  <span class="text-xs font-bold ${alert.active ? "text-slate-700" : "text-slate-400"}">
+                    ${alert.active ? "Ativo" : "Pausado"}
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  onclick="checkAlertNow('${alert.id}')"
+                  class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-[#0284C7] text-xs font-bold border border-sky-200/80 active:scale-95 transition"
+                >
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                  </svg>
+                  <span>Verificar Agora</span>
+                </button>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function toggleAlertActive(alertId) {
+      const idx = alerts.findIndex((a) => a.id === alertId);
+      if (idx === -1) return;
+      alerts[idx].active = !alerts[idx].active;
+      saveAlerts();
+      renderAlertsList();
+      showSnackbar(alerts[idx].active ? "Monitoramento ativado." : "Alerta pausado.");
+    }
+
+    function checkAlertNow(alertId) {
+      const idx = alerts.findIndex((a) => a.id === alertId);
+      if (idx === -1) return;
+
+      const alert = alerts[idx];
+      alert.active = true;
+      // 50% de chance na verificação rápida de encontrar dentro da faixa para boa experiência interativa
+      const luckyHit = Math.random() < 0.5;
+      const newQuote = generateRandomQuote(alert.minPrice, alert.maxPrice, luckyHit);
+      alert.quote = newQuote;
+      alert.lastChecked = new Date().toISOString();
+
+      saveAlerts();
+      renderAlertsList();
+
+      if (newQuote.price >= alert.minPrice && newQuote.price <= alert.maxPrice) {
+        dispatchFlightAlertNotification(
+          `Oferta Encontrada! ${alert.originCode} → ${alert.destCode}`,
+          `${formatBRL(newQuote.price)} na ${newQuote.airline} (${formatDateBR(alert.travelDate)}). Dentro da faixa ${formatBRL(alert.minPrice)}–${formatBRL(alert.maxPrice)}!`,
+          alert.id
+        );
+      } else {
+        showSnackbar(`Cotação atual: ${formatBRL(newQuote.price)} (${newQuote.airline}) — ainda acima de ${formatBRL(alert.maxPrice)}.`);
+      }
+    }
+
+    function dismissInstallTip() {
+      document.getElementById("install-tip-card").classList.add("hidden");
+      try {
+        localStorage.setItem(TIP_DISMISSED_KEY, "1");
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // TELA 2: CRIAR NOVO ALERTA
+    // =========================================================================
+    function renderAirportChips() {
+      const originChips = document.getElementById("origin-chips");
+      const destChips = document.getElementById("dest-chips");
+
+      originChips.innerHTML = BRAZILIAN_AIRPORTS.map(
+        (ap) => `
+          <button
+            type="button"
+            onclick="selectAirportChip('origin', '${ap.label}')"
+            class="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-sky-100 hover:text-[#0284C7] text-slate-700 text-[11px] font-semibold transition"
+          >
+            ${ap.code} • ${ap.city}
+          </button>
+        `
+      ).join("");
+
+      destChips.innerHTML = BRAZILIAN_AIRPORTS.map(
+        (ap) => `
+          <button
+            type="button"
+            onclick="selectAirportChip('dest', '${ap.label}')"
+            class="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-sky-100 hover:text-[#0284C7] text-slate-700 text-[11px] font-semibold transition"
+          >
+            ${ap.code} • ${ap.city}
+          </button>
+        `
+      ).join("");
+    }
+
+    function selectAirportChip(field, label) {
+      const input = document.getElementById(field === "origin" ? "input-origin" : "input-dest");
+      input.value = label;
+    }
+
+    function swapOriginDestination() {
+      const originInput = document.getElementById("input-origin");
+      const destInput = document.getElementById("input-dest");
+      const temp = originInput.value;
+      originInput.value = destInput.value;
+      destInput.value = temp;
+    }
+
+    function setTripType(type) {
+      formTripType = type;
+      const btnOneWay = document.getElementById("btn-trip-oneway");
+      const btnRound = document.getElementById("btn-trip-roundtrip");
+
+      if (type === "oneway") {
+        btnOneWay.className = "py-2.5 px-3 rounded-xl text-xs font-bold bg-white text-[#0F172A] shadow-sm transition";
+        btnRound.className = "py-2.5 px-3 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition";
+      } else {
+        btnRound.className = "py-2.5 px-3 rounded-xl text-xs font-bold bg-white text-[#0F172A] shadow-sm transition";
+        btnOneWay.className = "py-2.5 px-3 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition";
+      }
+    }
+
+    function setFrequency(hours) {
+      formFrequency = hours;
+      document.querySelectorAll(".freq-btn").forEach((btn) => {
+        const val = Number(btn.getAttribute("data-freq"));
+        if (val === hours) {
+          btn.className = "freq-btn py-2.5 px-2 rounded-2xl border-2 border-[#0284C7] bg-sky-50 text-[#0284C7] text-xs font-extrabold transition";
+        } else {
+          btn.className = "freq-btn py-2.5 px-2 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 text-xs font-bold transition";
+        }
+      });
+    }
+
+    function updatePricePreview() {
+      const minVal = Number(document.getElementById("input-min-price").value);
+      const maxVal = Number(document.getElementById("input-max-price").value);
+      const box = document.getElementById("price-validation-box");
+
+      if (!minVal || !maxVal || minVal <= 0 || maxVal <= 0) {
+        box.className = "rounded-2xl bg-amber-50 border border-amber-200 px-3.5 py-2.5 text-xs text-amber-800 font-medium";
+        box.textContent = "Informe valores positivos em Reais (R$) para o mínimo e o máximo.";
+        return false;
+      }
+
+      if (minVal > maxVal) {
+        box.className = "rounded-2xl bg-red-50 border border-red-200 px-3.5 py-2.5 text-xs text-red-700 font-semibold";
+        box.textContent = "O Valor Mínimo (X) deve ser menor ou igual ao Valor Máximo (Y).";
+        return false;
+      }
+
+      box.className = "rounded-2xl bg-sky-50 border border-sky-200/80 px-3.5 py-2.5 text-xs text-slate-700";
+      box.innerHTML = `Notificar quando a passagem estiver entre <strong class="text-[#0284C7]">${formatBRL(minVal)}</strong> e <strong class="text-[#0284C7]">${formatBRL(maxVal)}</strong>.`;
+      return true;
+    }
+
+    function prepareCreateForm() {
+      const todayISO = getFutureDateISO(0);
+      const defaultDateISO = getFutureDateISO(25);
+      const dateInput = document.getElementById("input-date");
+      dateInput.min = todayISO;
+      if (!dateInput.value || dateInput.value < todayISO) {
+        dateInput.value = defaultDateISO;
+      }
+      setTripType(formTripType);
+      setFrequency(formFrequency);
+      updatePricePreview();
+    }
+
+    function parseAirportField(rawText) {
+      const cleaned = rawText.trim();
+      // Formato "BVB - Boa Vista"
+      if (cleaned.includes("-")) {
+        const parts = cleaned.split("-");
+        const code = parts[0].trim().toUpperCase().slice(0, 3);
+        const city = parts.slice(1).join("-").trim() || code;
+        return { code, city };
+      }
+      // Busca na lista conhecida
+      const found = BRAZILIAN_AIRPORTS.find(
+        (a) => a.code.toLowerCase() === cleaned.toLowerCase() || a.city.toLowerCase() === cleaned.toLowerCase()
+      );
+      if (found) {
+        return { code: found.code, city: found.city };
+      }
+      // Código IATA de 3 letras ou nome livre
+      if (cleaned.length === 3) {
+        return { code: cleaned.toUpperCase(), city: cleaned.toUpperCase() };
+      }
+      const generatedCode = cleaned
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z]/g, "")
+        .toUpperCase()
+        .slice(0, 3) || "AER";
+      return { code: generatedCode, city: cleaned };
+    }
+
+    async function handleCreateAlertSubmit(event) {
+      event.preventDefault();
+
+      if (!updatePricePreview()) {
+        showSnackbar("Verifique a faixa de preço (Mínimo ≤ Máximo).");
+        return;
+      }
+
+      const originRaw = document.getElementById("input-origin").value;
+      const destRaw = document.getElementById("input-dest").value;
+      const travelDate = document.getElementById("input-date").value;
+      const minPrice = Math.round(Number(document.getElementById("input-min-price").value));
+      const maxPrice = Math.round(Number(document.getElementById("input-max-price").value));
+
+      const origin = parseAirportField(originRaw);
+      const dest = parseAirportField(destRaw);
+
+      if (origin.code === dest.code && origin.city.toLowerCase() === dest.city.toLowerCase()) {
+        showSnackbar("Escolha origem e destino diferentes.");
+        return;
+      }
+
+      // Solicita permissão de notificação caso ainda esteja pendente
+      if ("Notification" in window && Notification.permission === "default") {
+        try {
+          await Notification.requestPermission();
+          updateNotificationPermissionUI();
+        } catch (e) {}
+      }
+
+      const initialQuote = generateRandomQuote(minPrice, maxPrice, false);
+
+      const newAlert = {
+        id: "alert_" + Date.now(),
+        originCode: origin.code,
+        originCity: origin.city,
+        destCode: dest.code,
+        destCity: dest.city,
+        travelDate,
+        tripType: formTripType,
+        minPrice,
+        maxPrice,
+        frequencyHours: formFrequency,
+        active: true,
+        lastChecked: new Date().toISOString(),
+        quote: initialQuote
+      };
+
+      alerts.unshift(newAlert);
+      saveAlerts();
+
+      // Limpa os campos de trecho para a próxima criação
+      document.getElementById("input-origin").value = "";
+      document.getElementById("input-dest").value = "";
+
+      navigateTo("home");
+      showSnackbar(`Alerta ${origin.code} → ${dest.code} ativado!`);
+
+      if (initialQuote.price >= minPrice && initialQuote.price <= maxPrice) {
+        dispatchFlightAlertNotification(
+          `Oferta Encontrada! ${origin.code} → ${dest.code}`,
+          `Já encontramos por ${formatBRL(initialQuote.price)} na ${initialQuote.airline}!`,
+          newAlert.id
+        );
+      }
+    }
+
+    // =========================================================================
+    // TELA 3: DETALHES DA OFERTA E SIMULAÇÕES
+    // =========================================================================
+    function getSelectedAlert() {
+      return alerts.find((a) => a.id === selectedAlertId) || null;
+    }
+
+    function renderAlertDetails() {
+      const alert = getSelectedAlert();
+      if (!alert) {
+        navigateTo("home");
+        return;
+      }
+
+      const status = getAlertStatus(alert);
+      const quote = alert.quote || generateRandomQuote(alert.minPrice, alert.maxPrice, false);
+      const isInRange = quote.price >= alert.minPrice && quote.price <= alert.maxPrice;
+
+      // Cabeçalho
+      document.getElementById("detail-subtitle").textContent = alert.active ? "Monitorando preços em R$" : "Alerta pausado";
+      const toggleBtn = document.getElementById("detail-toggle-btn");
+      toggleBtn.textContent = alert.active ? "Ativo" : "Pausado";
+      toggleBtn.className = alert.active
+        ? "px-3 py-1.5 rounded-xl text-xs font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40 transition"
+        : "px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 transition";
+
+      // Resumo da Rota
+      const statusBadge = document.getElementById("detail-status-badge");
+      statusBadge.textContent = status.label;
+      statusBadge.className = `px-3 py-1 rounded-full text-xs font-extrabold ${status.badgeClass}`;
+
+      document.getElementById("detail-frequency-pill").textContent = `A cada ${alert.frequencyHours}h`;
+      document.getElementById("detail-origin-code").textContent = alert.originCode;
+      document.getElementById("detail-origin-city").textContent = alert.originCity;
+      document.getElementById("detail-dest-code").textContent = alert.destCode;
+      document.getElementById("detail-dest-city").textContent = alert.destCity;
+      document.getElementById("detail-trip-type").textContent = alert.tripType === "roundtrip" ? "Ida e volta" : "Somente ida";
+      document.getElementById("detail-date-formatted").textContent = formatDateBR(alert.travelDate);
+      document.getElementById("detail-target-range").textContent = `${formatBRL(alert.minPrice)} a ${formatBRL(alert.maxPrice)}`;
+
+      // Cartão de Destaque da Cotação
+      const quoteCard = document.getElementById("detail-quote-card");
+      quoteCard.className = isInRange
+        ? "bg-white rounded-3xl p-4 shadow-sm border-2 border-[#10B981] space-y-3.5 transition-colors"
+        : "bg-white rounded-3xl p-4 shadow-sm border-2 border-slate-200 space-y-3.5 transition-colors";
+
+      const airlineObj = AIRLINES.find((a) => a.name === quote.airline) || AIRLINES[0];
+      const airlineBadge = document.getElementById("detail-airline-badge");
+      airlineBadge.textContent = quote.airline;
+      airlineBadge.className = `px-3 py-1 rounded-xl text-xs font-extrabold ${airlineObj.color}`;
+
+      const priceEl = document.getElementById("detail-quote-price");
+      priceEl.textContent = formatBRL(quote.price);
+      priceEl.className = `text-3xl font-black tracking-tight mt-0.5 ${isInRange ? "text-[#10B981]" : "text-slate-900"}`;
+
+      document.getElementById("detail-flight-time").textContent = `${quote.departureTime} → ${quote.arrivalTime}`;
+      document.getElementById("detail-flight-duration").textContent = `${quote.duration} • ${quote.stops}`;
+
+      // Medidor visual comparando preço atual com faixa X..Y
+      document.getElementById("gauge-min-label").textContent = `Mín: ${formatBRL(alert.minPrice)}`;
+      document.getElementById("gauge-max-label").textContent = `Máx: ${formatBRL(alert.maxPrice)}`;
+
+      const gaugeStatus = document.getElementById("gauge-status-label");
+      const gaugeMarker = document.getElementById("gauge-marker");
+
+      if (isInRange) {
+        const diffMax = alert.maxPrice - quote.price;
+        gaugeStatus.textContent = diffMax > 0
+          ? `Dentro da faixa! (${formatBRL(diffMax)} abaixo do máximo)`
+          : "No valor máximo da sua faixa!";
+        gaugeStatus.className = "text-[#10B981] font-extrabold";
+        gaugeMarker.className = "h-full bg-[#10B981] rounded-full transition-all duration-300";
+        const span = Math.max(1, alert.maxPrice - alert.minPrice);
+        const pct = 20 + Math.round(((quote.price - alert.minPrice) / span) * 60);
+        gaugeMarker.style.width = `${Math.min(80, Math.max(20, pct))}%`;
+      } else if (quote.price > alert.maxPrice) {
+        const over = quote.price - alert.maxPrice;
+        gaugeStatus.textContent = `${formatBRL(over)} acima do teto desejado`;
+        gaugeStatus.className = "text-amber-600 font-bold";
+        gaugeMarker.className = "h-full bg-amber-500 rounded-full transition-all duration-300";
+        gaugeMarker.style.width = "92%";
+      } else {
+        const under = alert.minPrice - quote.price;
+        gaugeStatus.textContent = `${formatBRL(under)} abaixo do mínimo definido`;
+        gaugeStatus.className = "text-[#0284C7] font-bold";
+        gaugeMarker.className = "h-full bg-[#0284C7] rounded-full transition-all duration-300";
+        gaugeMarker.style.width = "14%";
+      }
+
+      document.getElementById("detail-last-checked").textContent = `Verificado: ${formatRelativeTime(alert.lastChecked)}`;
+
+      // Atualiza link dinâmico para busca real no Google Voos
+      const flightsBtn = document.getElementById("btn-google-flights");
+      const queryText = encodeURIComponent(`Flights from ${alert.originCode} to ${alert.destCode} on ${alert.travelDate}`);
+      flightsBtn.href = `https://www.google.com/travel/flights?q=${queryText}&curr=BRL&hl=pt-BR`;
+    }
+
+    function toggleCurrentAlertActive() {
+      const alert = getSelectedAlert();
+      if (!alert) return;
+      alert.active = !alert.active;
+      saveAlerts();
+      renderAlertDetails();
+      showSnackbar(alert.active ? "Alerta reativado." : "Alerta pausado.");
+    }
+
+    function simulateInRangePrice() {
+      const alert = getSelectedAlert();
+      if (!alert) return;
+
+      alert.active = true;
+      const matchedQuote = generateRandomQuote(alert.minPrice, alert.maxPrice, true);
+      alert.quote = matchedQuote;
+      alert.lastChecked = new Date().toISOString();
+
+      saveAlerts();
+      renderAlertDetails();
+
+      dispatchFlightAlertNotification(
+        `Oferta Encontrada! ${alert.originCode} → ${alert.destCode}`,
+        `Passagem por ${formatBRL(matchedQuote.price)} na ${matchedQuote.airline} (${formatDateBR(alert.travelDate)}).`,
+        alert.id
+      );
+    }
+
+    function simulateMarketQuote() {
+      const alert = getSelectedAlert();
+      if (!alert) return;
+
+      const marketQuote = generateRandomQuote(alert.minPrice, alert.maxPrice, false);
+      alert.quote = marketQuote;
+      alert.lastChecked = new Date().toISOString();
+
+      saveAlerts();
+      renderAlertDetails();
+
+      if (alert.active && marketQuote.price >= alert.minPrice && marketQuote.price <= alert.maxPrice) {
+        dispatchFlightAlertNotification(
+          `Oferta Encontrada! ${alert.originCode} → ${alert.destCode}`,
+          `Cotação caiu para ${formatBRL(marketQuote.price)} na ${marketQuote.airline}!`,
+          alert.id
+        );
+      } else {
+        showSnackbar(`Nova cotação simulada: ${formatBRL(marketQuote.price)} (${marketQuote.airline}).`);
+      }
+    }
+
+    // =========================================================================
+    // EXCLUSÃO DE ALERTA (MODAL CUSTOMIZADO) E CÓPIA DE SNIPPET
+    // =========================================================================
+    function openDeleteModal() {
+      const alert = getSelectedAlert();
+      if (!alert) return;
+      document.getElementById("delete-modal-desc").textContent =
+        `Você deixará de monitorar ${alert.originCode} → ${alert.destCode} (${formatBRL(alert.minPrice)} a ${formatBRL(alert.maxPrice)}).`;
+      document.getElementById("delete-modal").classList.remove("hidden");
+    }
+
+    function closeDeleteModal() {
+      document.getElementById("delete-modal").classList.add("hidden");
+    }
+
+    function confirmDeleteAlert() {
+      if (!selectedAlertId) return;
+      alerts = alerts.filter((a) => a.id !== selectedAlertId);
+      saveAlerts();
+      closeDeleteModal();
+      selectedAlertId = null;
+      navigateTo("home");
+      showSnackbar("Alerta excluído.");
+    }
+
+    function copyApiSnippet() {
+      const codeText = document.getElementById("api-snippet-code").textContent;
+      const tempArea = document.createElement("textarea");
+      tempArea.value = codeText;
+      tempArea.style.position = "fixed";
+      tempArea.style.opacity = "0";
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      try {
+        document.execCommand("copy");
+        showSnackbar("Código de exemplo copiado!");
+      } catch (err) {
+        showSnackbar("Não foi possível copiar automaticamente.");
+      }
+      document.body.removeChild(tempArea);
+    }
+
+    // Atualiza relógio da barra de status no desktop
+    function updateStatusClock() {
+      const clockEl = document.getElementById("status-clock");
+      if (!clockEl) return;
+      const now = new Date();
+      clockEl.textContent = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    // =========================================================================
+    // INICIALIZAÇÃO DO APLICATIVO
+    // =========================================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      loadAlerts();
+      renderAirportChips();
+      updateNotificationPermissionUI();
+      updateStatusClock();
+      setInterval(updateStatusClock, 30000);
+
+      try {
+        if (localStorage.getItem(TIP_DISMISSED_KEY) === "1") {
+          document.getElementById("install-tip-card").classList.add("hidden");
+        }
+      } catch (e) {}
+
+      renderAlertsList();
+    });
+  </script>
+</body>
+</html>
